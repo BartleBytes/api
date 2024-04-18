@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const app = express();
@@ -10,14 +11,16 @@ const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const uploadMiddleware = multer({dest: 'uploads/'});
 const fs = require('fs');
-const secret = 'asdfasdfasdf';
+const secret = process.env.SECRET;
+
+
 
 app.use(cors({ credentials: true, origin: 'http://localhost:3000' }));
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
 
-mongoose.connect('mongodb+srv://dblog:Abec11re@cluster0.n84iojd.mongodb.net/myDatabase', {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => {
@@ -27,7 +30,13 @@ mongoose.connect('mongodb+srv://dblog:Abec11re@cluster0.n84iojd.mongodb.net/myDa
   process.exit(1); // Terminate the application if MongoDB connection fails
 });
 
-app.post('/register', async (req, res) => {
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Server error' });
+});
+
+app.post('/register', async (req, res, next) => {
   const { username, password } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -35,11 +44,11 @@ app.post('/register', async (req, res) => {
     res.json(userDoc);
   } catch (error) {
     console.error('Error creating user:', error);
-    res.status(400).json({ message: 'Error creating user' });
+    next(error); // Pass error to error handling middleware
   }
 });
 
-app.post('/login', async (req, res) => {
+app.post('/login', async (req, res, next) => {
   const { username, password } = req.body;
   try {
     const userDoc = await User.findOne({ username });
@@ -50,32 +59,33 @@ app.post('/login', async (req, res) => {
     jwt.sign({ username, id: userDoc._id }, secret, {}, (err, token) => {
       if (err) {
         console.error('Error signing token:', err);
-        return res.status(500).json({ message: 'Token signing error' });
+        next(err); // Pass error to error handling middleware
       }
       res.cookie('token', token).json({ id: userDoc._id, username });
     });
   } catch (error) {
     console.error('Error logging in:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error); // Pass error to error handling middleware
   }
 });
 
-app.get('/profile', (req, res) => {
+app.get('/profile', (req, res, next) => {
   const { token } = req.cookies;
   jwt.verify(token, secret, {}, (err, info) => {
     if (err) {
       console.error('Error decoding token:', err);
+      res.clearCookie('token');
       return res.status(401).json({ message: 'Unauthorized', error: err.message });
     }
     res.json(info);
   });
 });
 
-app.post('/logout', (req,res) => {
-  res.cookie('token', '').json('ok');
+app.post('/logout', (req, res, next) => {
+  res.clearCookie('token').json('ok');
 });
 
-app.post('/post', uploadMiddleware.single('file'), async(req, res) => {
+app.post('/post', uploadMiddleware.single('file'), async(req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
@@ -89,7 +99,10 @@ app.post('/post', uploadMiddleware.single('file'), async(req, res) => {
 
     const {token} = req.cookies;
     jwt.verify(token, secret, {}, async (err, info) => {
-      if (err) throw err;
+      if (err) {
+        console.error('Error decoding token:', err);
+        return res.status(401).json({ message: 'Unauthorized', error: err.message });
+      }
       const {title, summary, content} = req.body;
       const postDoc = await Post.create({
         title,
@@ -103,26 +116,72 @@ app.post('/post', uploadMiddleware.single('file'), async(req, res) => {
 
   } catch (error) {
     console.error('Error uploading file:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error); // Pass error to error handling middleware
   }
 });
 
-app.get('/posts', async (req, res) => {
+app.put('/post', uploadMiddleware.single('file'), async (req, res, next) => {
+  let newPath = null;
+  if (req.file) {
+    const { originalname, path } = req.file;
+    const parts = originalname.split('.');
+    const ext = parts[parts.length - 1];
+    newPath = path + '.' + ext;
+    fs.renameSync(path, newPath);
+  }
+
+  const { token } = req.cookies;
+  jwt.verify(token, secret, {}, async (err, info) => {
+    if (err) {
+      console.error('Error decoding token:', err);
+      return res.status(401).json({ message: 'Unauthorized', error: err.message });
+    }
+    const { id, title, summary, content } = req.body;
+    try {
+      const postDoc = await Post.findById(id);
+      if (!postDoc) {
+        return res.status(404).json('Post not found');
+      }
+      if (postDoc.author.toString() !== info.id) {
+        return res.status(401).json('You are not the author');
+      }
+      postDoc.title = title;
+      postDoc.summary = summary;
+      postDoc.content = content;
+      postDoc.cover = newPath ? newPath : postDoc.cover;
+      await postDoc.save();
+      res.json(postDoc);
+    } catch (error) {
+      console.error('Error updating post:', error);
+      next(error); // Pass error to error handling middleware
+    }
+  });
+});
+
+
+app.get('/posts', async (req, res, next) => {
   try {
     const posts = await Post.find().populate('author', ['username']).sort({createdAt: -1}).limit(20);
     res.json(posts);
   } catch (error) {
     console.error('Error retrieving posts:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error); // Pass error to error handling middleware
   }
 });
 
 
-app.get('/post/:id', async(req, res) => {
+app.get('/post/:id', async(req, res, next) => {
   const {id} = req.params
-  const postDoc = await Post.findById(id).populate('author', ['username']);
-  res.json(postDoc);
-  
+  try {
+    const postDoc = await Post.findById(id).populate('author', ['username']);
+    if (!postDoc) {
+      return res.status(404).json('Post not found');
+    }
+    res.json(postDoc);
+  } catch (error) {
+    console.error('Error retrieving post:', error);
+    next(error); // Pass error to error handling middleware
+  }
 });
 
 const PORT = process.env.PORT || 4040;
