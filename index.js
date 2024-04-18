@@ -21,7 +21,7 @@ app.use(cors({
   credentials: true,
 }));
 
-app.options('/login', (req, res) => {
+app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
   res.header('Access-Control-Allow-Methods', 'POST');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
