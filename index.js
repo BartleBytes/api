@@ -14,11 +14,6 @@ const fs = require('fs');
 const secret = process.env.SECRET;
 
 
-
-app.use(express.json());
-app.use(cookieParser());
-app.use('/uploads', express.static(__dirname + '/uploads'));
-
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
@@ -26,6 +21,7 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN,
   credentials: true,
 }));
+
 app.options('/login', (req, res) => {
   res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
   res.header('Access-Control-Allow-Methods', 'POST');
@@ -44,11 +40,6 @@ mongoose.connect(process.env.MONGODB_URI, {
   process.exit(1); // Terminate the application if MongoDB connection fails
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Server error' });
-});
 
 app.post('/register', async (req, res, next) => {
   const { username, password } = req.body;
