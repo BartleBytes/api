@@ -26,7 +26,13 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN,
   credentials: true,
 }));
-app.options('*', cors());
+app.options('/login', (req, res) => {
+  res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
+  res.header('Access-Control-Allow-Methods', 'POST');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
 
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
