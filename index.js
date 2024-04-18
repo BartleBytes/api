@@ -1,33 +1,29 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const app = express();
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const User = require('./models/User');
-const Post = require('./models/Post');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
-const uploadMiddleware = multer({dest: 'uploads/'});
 const fs = require('fs');
-const secret = process.env.SECRET;
 
+const User = require('./models/User');
+const Post = require('./models/Post');
 
+const app = express();
 
-// Add a middleware to handle OPTIONS requests for all endpoints
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.sendStatus(200);
-});
-
-
+// Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+  credentials: true,
+}));
+app.options('*', cors());
 
+// Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -35,9 +31,22 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.log('MongoDB connected');
 }).catch(err => {
   console.error('MongoDB connection error:', err);
-  process.exit(1); // Terminate the application if MongoDB connection fails
+  process.exit(1);
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Server error' });
+});
+
+// OPTIONS request handler
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
