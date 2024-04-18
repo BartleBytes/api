@@ -53,6 +53,7 @@ app.post('/register', async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userDoc = await User.create({ username, password: hashedPassword });
     res.json(userDoc);
+    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
   } catch (error) {
     console.error('Error creating user:', error);
     next(error); // Pass error to error handling middleware
@@ -74,6 +75,7 @@ app.post('/login', async (req, res, next) => {
       }
       res.cookie('token', token).json({ id: userDoc._id, username });
     });
+    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
   } catch (error) {
     console.error('Error logging in:', error);
     next(error); // Pass error to error handling middleware
@@ -88,6 +90,7 @@ app.get('/profile', (req, res, next) => {
       res.clearCookie('token');
       return res.status(401).json({ message: 'Unauthorized', error: err.message });
     }
+    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
     res.json(info);
   });
 });
@@ -173,6 +176,7 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res, next) => {
 app.get('/posts', async (req, res, next) => {
   try {
     const posts = await Post.find().populate('author', ['username']).sort({createdAt: -1}).limit(20);
+    res.header('Acces-Control-Allow-Origin', process.env.CORS_ORIGIN);
     res.json(posts);
   } catch (error) {
     console.error('Error retrieving posts:', error);
