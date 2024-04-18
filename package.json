@@ -2,10 +2,10 @@
   "name": "blog",
   "version": "1.0.0",
   "description": "blog-api",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node server",
-    "dev": "nodemon server"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
