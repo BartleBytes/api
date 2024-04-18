@@ -176,7 +176,7 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res, next) => {
 app.get('/posts', async (req, res, next) => {
   try {
     const posts = await Post.find().populate('author', ['username']).sort({createdAt: -1}).limit(20);
-    res.header('Acces-Control-Allow-Origin', process.env.CORS_ORIGIN);
+    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
     res.json(posts);
   } catch (error) {
     console.error('Error retrieving posts:', error);
