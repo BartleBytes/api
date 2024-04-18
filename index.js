@@ -15,7 +15,7 @@ const secret = process.env.SECRET;
 
 
 
-app.use(cors({ credentials: true, origin: 'process.env.CORS_ORIGIN' }));
+app.use(cors({ credentials: true, origin: process.env.CORS_ORIGIN }));
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
