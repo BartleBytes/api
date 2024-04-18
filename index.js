@@ -1,18 +1,25 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const app = express();
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const User = require('./models/User');
-const Post = require('./models/Post');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const multer = require('multer');
-const uploadMiddleware = multer({dest: 'uploads/'});
 const fs = require('fs');
+
+const User = require('./models/User');
+const Post = require('./models/Post');
+
+const uploadMiddleware = multer({ dest: 'uploads/' });
 const secret = process.env.SECRET;
 
+const app = express();
+
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+  credentials: true,
+}));
 
 app.options('/login', (req, res) => {
   res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
@@ -25,10 +32,7 @@ app.options('/login', (req, res) => {
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
-app.use(cors({
-  origin: process.env.CORS_ORIGIN,
-  credentials: true,
-}));
+
 
 
 
