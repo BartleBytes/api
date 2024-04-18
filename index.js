@@ -13,9 +13,12 @@ const uploadMiddleware = multer({dest: 'uploads/'});
 const fs = require('fs');
 const secret = process.env.SECRET;
 
-app.use(cors({ credentials: true, origin: process.env.CORS_ORIGIN  }));
-app.options('*', cors());
-
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN,
+  credentials: true,
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser());
