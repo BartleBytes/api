@@ -2,7 +2,7 @@
   "name": "blog",
   "version": "1.0.0",
   "description": "blog-api",
-  "proxy": "https://client-yza1.onrender.com",
+  "proxy": "http://localhost:4040",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

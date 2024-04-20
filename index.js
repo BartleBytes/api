@@ -16,15 +16,15 @@ const secret = process.env.SECRET;
 
 const app = express();
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN); // Replace with your frontend URL
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
+// app.use((req, res, next) => {
+//   res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN); // Replace with your frontend URL
+//   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+//   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+//   res.header('Access-Control-Allow-Credentials', 'true');
+//   next();
+// });
 
-
+app.use(cors({credentials:true,origin:process.env.CORS_ORIGIN}));
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
@@ -49,7 +49,6 @@ app.post('/register', async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userDoc = await User.create({ username, password: hashedPassword });
     res.json(userDoc);
-    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
   } catch (error) {
     console.error('Error creating user:', error);
     next(error); // Pass error to error handling middleware
@@ -71,25 +70,37 @@ app.post('/login', async (req, res, next) => {
       }
       res.cookie('token', token).json({ id: userDoc._id, username });
     });
-    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
+    // res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
   } catch (error) {
     console.error('Error logging in:', error);
     next(error); // Pass error to error handling middleware
   }
 });
 
+// app.get('/profile', (req, res, next) => {
+//   const { token } = req.cookies;
+//   jwt.verify(token, secret, {}, (err, info) => {
+//     if (err) {
+//       console.error('Error decoding token:', err);
+//       res.clearCookie('token');
+//       return res.status(401).json({ message: 'Unauthorized', error: err.message });
+//     }
+//     res.json(info);
+//   });
+// });
 app.get('/profile', (req, res, next) => {
   const { token } = req.cookies;
-  jwt.verify(token, secret, {}, (err, info) => {
+  jwt.verify(token, secret, {}, (err, decodedToken) => {
     if (err) {
       console.error('Error decoding token:', err);
       res.clearCookie('token');
       return res.status(401).json({ message: 'Unauthorized', error: err.message });
     }
-    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
-    res.json(info);
+    // Send both the decoded payload and the JWT token in the response
+    res.json({ token, decodedToken });
   });
 });
+
 
 app.post('/logout', (req, res, next) => {
   res.clearCookie('token').json('ok');
@@ -172,7 +183,6 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res, next) => {
 app.get('/posts', async (req, res, next) => {
   try {
     const posts = await Post.find().populate('author', ['username']).sort({createdAt: -1}).limit(20);
-    res.header('Access-Control-Allow-Origin', process.env.CORS_ORIGIN);
     res.json(posts);
   } catch (error) {
     console.error('Error retrieving posts:', error);
